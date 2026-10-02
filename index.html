@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Gladiator Sim: Legends</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background-color: #1a1a1a; color: #f0f0f0; margin: 0; padding: 10px; display: flex; justify-content: center; }
+  .app-container { width: 100%; max-width: 420px; background: #2a2a2a; padding: 20px; border-radius: 16px; box-shadow: 0 8px 16px rgba(0,0,0,0.8); box-sizing: border-box; }
+  h2 { text-align: center; margin-top: 0; color: #e6b800; text-transform: uppercase; letter-spacing: 2px; }
+  .wave-counter { text-align: center; color: #aaa; font-size: 14px; margin-bottom: 15px; text-transform: uppercase; letter-spacing: 1px; cursor: pointer; user-select: none; }
+  
+  .stats-board { background: #1a1a1a; padding: 12px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #333; }
+  .stats-header { display: flex; justify-content: space-between; font-size: 14px; margin-bottom: 8px; border-bottom: 1px solid #333; padding-bottom: 8px; }
+  .attributes { display: flex; justify-content: space-between; font-size: 13px; color: #b3b3b3; font-weight: bold; background: #222; padding: 6px; border-radius: 6px; margin-bottom: 4px; }
+  .derived-stats { display: flex; justify-content: space-between; font-size: 13px; font-weight: bold; padding: 4px 6px; }
+  
+  .health { color: #ff4d4d; font-weight: bold; margin-top: 4px; }
+  .stamina { color: #4da6ff; font-weight: bold; margin-top: 4px; }
+  .gold { color: #ffd700; font-weight: bold; margin-top: 4px; }
+  .name { font-size: 0.9em; color: #888; text-transform: uppercase; }
+  
+  .stat-dmg { color: #ff9933; }
+  .stat-def { color: #99ccff; }
+  .stat-dodge { color: #cc99ff; }
+  
+  .btn { display: block; width: 100%; padding: 15px; margin: 10px 0; font-size: 15px; font-weight: bold; color: white; background: #444; border: 2px solid #555; border-radius: 10px; cursor: pointer; touch-action: manipulation; transition: 0.1s; }
+  .btn:active { background: #666; border-color: #777; }
+  .btn:disabled { background: #222; border-color: #333; color: #555; cursor: not-allowed; }
+  .btn-action { background: #2b4c7e; border-color: #3b5c8e; }
+  .btn-action:active { background: #3b5c8e; }
+  .btn-shop { background: #7e5c2b; border-color: #8e6c3b; }
+  .btn-danger { background: #7e2b2b; border-color: #8e3b3b; }
+  
+  #log { margin-top: 15px; height: 160px; overflow-y: auto; text-align: left; font-size: 14px; line-height: 1.4; background: #111; padding: 12px; border-radius: 8px; border: 1px solid #333; }
+  .log-turn { margin-bottom: 8px; border-bottom: 1px dashed #222; padding-bottom: 8px; }
+  .log-god { color: #00ffcc; font-weight: bold; }
+  
+  .screen { display: none; }
+  .active-screen { display: block; }
+  
+  .shop-item { display: flex; justify-content: space-between; align-items: center; background: #1a1a1a; padding: 10px; border-radius: 8px; margin-bottom: 10px; border: 1px solid #444; }
+  .shop-item span { font-size: 13px; line-height: 1.4; }
+  .legendary { border-color: #ff9900; box-shadow: 0 0 8px rgba(255, 153, 0, 0.3); }
+  .legendary-text { color: #ffaa00; font-weight: bold; text-shadow: 0 0 4px rgba(255,170,0,0.5); }
+</style>
+</head>
+<body>
+<div class="app-container">
+  
+  <!-- ARENA SCREEN -->
+  <div id="screen-arena" class="screen">
+    <h2>The Sands</h2>
+    <div class="wave-counter" id="wave-display" onclick="toggleGodMode()">Wave 1</div>
+    
+    <div class="stats-board">
+      <div class="stats-header">
+        <div>
+          <div class="name" id="p-gear">Fists & Rags</div>
+          <div class="health" id="p-hp">HP: 100/100</div>
+          <div class="stamina" id="p-sp">STA: 100/100</div>
+        </div>
+        <div style="text-align: right;">
+          <div class="name" id="e-name">🤺 Thracian</div>
+          <div class="health" id="e-hp">HP: 100/100</div>
+        </div>
+      </div>
+      <div class="attributes">
+        <span id="p-str">STR: 0</span>
+        <span id="p-spd">SPD: 0</span>
+        <span id="p-sta">STA: 0</span>
+        <span class="gold" id="p-gold">0G</span>
+      </div>
+      <div class="derived-stats">
+        <span class="stat-dmg" id="p-dmg">DMG: +0</span>
+        <span class="stat-def" id="p-def">DEF: 0</span>
+        <span class="stat-dodge" id="p-dodge">DODGE: 0%</span>
+      </div>
+    </div>
+    
+    <button class="btn" onclick="act('light')">Quick Strike (<span id="cost-light">10</span> STA)</button>
+    <button class="btn" onclick="act('heavy')">Heavy Blow (<span id="cost-heavy">30</span> STA)</button>
+    <button class="btn btn-action" onclick="act('rest')">Evade & Rest</button>
+
+    <div id="log"><div class="log-turn">The crowd roars. The match begins!</div></div>
+  </div>
+
+  <!-- POST MATCH SCREEN -->
+  <div id="screen-post" class="screen">
+    <h2 id="match-result">Victory!</h2>
+    <p style="text-align: center; color: #aaa;" id="match-desc">You survived the arena.</p>
+    <button class="btn btn-action" id="btn-next-arena" onclick="startMatch()">Enter Next Wave</button>
+    <button class="btn btn-shop" id="btn-go-shop" onclick="switchScreen('screen-shop')">Visit the Shop</button>
+  </div>
+
+  <!-- SHOP SCREEN -->
+  <div id="screen-shop" class="screen">
+    <h2>Armory</h2>
+    <div class="wave-counter">Rest & Upgrade</div>
+    
+    <div class="stats-board">
+      <div class="stats-header" style="justify-content: space-around;">
+        <div class="health" id="shop-hp">HP: 100/100</div>
+        <div class="gold" id="shop-gold">Gold: 0</div>
+      </div>
+      <div class="attributes">
+        <span id="shop-str">STR: 0</span>
+        <span id="shop-spd">SPD: 0</span>
+        <span id="shop-sta">STA: 0</span>
+      </div>
+      <div class="derived-stats">
+        <span class="stat-dmg" id="shop-dmg">DMG: +0</span>
+        <span class="stat-def" id="shop-def">DEF: 0</span>
+        <span class="stat-dodge" id="shop-dodge">DODGE: 0%</span>
+      </div>
+    </div>
+    
+    <div id="dynamic-shop-items"></div>
+
+    <div class="shop-item" style="border-color: #2b4c7e;">
+      <span><b>Medic's Poultice</b><br><i style="color:#aaa">Restore all HP</i><br><i style="color:#ffd700">25 Gold</i></span>
+      <button class="btn btn-action" style="width: auto; padding: 10px 20px;" onclick="heal()">Heal</button>
+    </div>
+
+    <button class="btn btn-action" style="margin-top: 20px;" onclick="startMatch()">Enter Next Wave</button>
+    <button class="btn btn-danger" style="margin-top: 10px;" onclick="wipeSave()">Abandon Run (Delete Save)</button>
+  </div>
+
+</div>
+
+<script>
+  // Core Data
+  let p = { hp: 100, maxHp: 100, sp: 100, maxSp: 100, gold: 0, str: 0, spd: 0, sta: 0, weapon: 'Fists', armor: 'Rags', dmgMod: 0, defMod: 0 };
+  let e = { hp: 100, maxHp: 100, name: 'Thracian', icon: '🤺', dmgBase: 5, dodge: 0.1 };
+  let wave = 1;
+  let gameActive = true;
+  let currentShop = [];
+
+  // Enemy Templates
+  const enemyTypes = [
+    { name: 'Thracian', icon: '🤺', hpMod: 1.0, dmgMod: 1.0, dodge: 0.1, desc: 'Balanced fighter.' },
+    { name: 'Retiarius', icon: '🕸️', hpMod: 0.6, dmgMod: 0.8, dodge: 0.35, desc: 'Fast, evades often.' },
+    { name: 'Brute', icon: '🧌', hpMod: 1.6, dmgMod: 1.5, dodge: 0.0, desc: 'Heavy hits, tons of health.' },
+    { name: 'Dimachaerus', icon: '⚔️', hpMod: 0.9, dmgMod: 1.3, dodge: 0.15, desc: 'Aggressive dual-wielder.' },
+    { name: 'Champion', icon: '👑', hpMod: 2.0, dmgMod: 1.8, dodge: 0.2, desc: 'Deadly boss.' }
+  ];
+
+  // Expanded Loot Pool
+  const itemPool = [
+    { type: 'weapon', name: 'Dagger', dmg: 4, cost: 25, desc: '+4 Base Dmg' },
+    { type: 'weapon', name: 'Gladius', dmg: 10, cost: 60, desc: '+10 Base Dmg' },
+    { type: 'weapon', name: 'Trident', dmg: 18, cost: 120, desc: '+18 Base Dmg' },
+    { type: 'armor', name: 'Leather', def: 3, cost: 40, desc: '-3 Dmg taken' },
+    { type: 'armor', name: 'Chainmail', def: 8, cost: 100, desc: '-8 Dmg taken' },
+    { type: 'stat', name: 'Lion Blood', str: 2, cost: 75, desc: '+2 STR (+6 Dmg)' },
+    { type: 'stat', name: 'Wolf Spirit', spd: 2, cost: 75, desc: '+2 SPD (Dodge & Hit)' },
+    { type: 'stat', name: 'Bear Heart', sta: 2, cost: 75, desc: '+2 STA (Max Stamina)' },
+    { type: 'stat', name: 'Vitality Elixir', maxHp: 25, cost: 80, desc: '+25 Max HP' },
+    // Legendaries
+    { type: 'weapon', name: "Ares' Blade", dmg: 35, str: 5, cost: 350, desc: '+35 Dmg, +5 STR', legendary: true },
+    { type: 'armor', name: "Aegis Shield", def: 20, sta: 5, cost: 350, desc: '-20 Dmg taken, +5 STA', legendary: true },
+    { type: 'stat', name: "Hermes' Sandals", spd: 8, cost: 300, desc: '+8 SPD, Massive Dodge', legendary: true }
+  ];
+
+  window.onload = loadGame;
+
+  function toggleGodMode() {
+    p.gold += 99999; p.hp = 9999; p.maxHp = 9999; p.str += 100; p.spd += 100; p.sta += 100;
+    p.maxSp = 100 + (p.sta * 10); p.sp = p.maxSp;
+    saveGame(); updateUI();
+    logAction("<span class='log-god'>GOD MODE: You transcend mortality.</span>", true);
+  }
+
+  function generateShopItems() {
+    let shuffled = [...itemPool].sort(() => 0.5 - Math.random());
+    currentShop = shuffled.slice(0, 3);
+  }
+
+  function renderShop() {
+    const container = document.getElementById('dynamic-shop-items');
+    container.innerHTML = "";
+    if (currentShop.length === 0) container.innerHTML = "<div style='text-align:center; color:#888; padding: 10px;'>Sold out!</div>";
+    
+    currentShop.forEach((item, index) => {
+      let isLeg = item.legendary ? "legendary" : "";
+      let isLegTxt = item.legendary ? "legendary-text" : "";
+      container.innerHTML += `
+        <div class="shop-item ${isLeg}">
+          <span><b class="${isLegTxt}">${item.name}</b><br><i style="color:#aaa">${item.desc}</i><br><i style="color:#ffd700">${item.cost} Gold</i></span>
+          <button class="btn btn-shop" style="width: auto; padding: 10px 15px;" onclick="buyItem(${index})">Buy</button>
+        </div>
+      `;
+    });
+  }
+
+  function buyItem(index) {
+    let item = currentShop[index];
+    if (p.gold >= item.cost) {
+      p.gold -= item.cost;
+      if (item.type === 'weapon' || item.legendary) { p.dmgMod = item.dmg || p.dmgMod; p.weapon = item.type === 'weapon' ? item.name : p.weapon; }
+      if (item.type === 'armor' || item.legendary) { p.defMod = item.def || p.defMod; p.armor = item.type === 'armor' ? item.name : p.armor; }
+      if (item.str) p.str += item.str;
+      if (item.spd) p.spd += item.spd;
+      if (item.sta) p.sta += item.sta;
+      if (item.maxHp) { p.maxHp += item.maxHp; p.hp += item.maxHp; }
+      
+      p.maxSp = 100 + (p.sta * 15); 
+      currentShop.splice(index, 1);
+      saveGame(); renderShop(); updateUI();
+    } else {
+      alert("Not enough gold!");
+    }
+  }
+
+  function saveGame() {
+    localStorage.setItem('ludusSaveV2', JSON.stringify({ p, e, wave, currentShop }));
+  }
+
+  function loadGame() {
+    const saved = localStorage.getItem('ludusSaveV2');
+    if (saved) {
+      const data = JSON.parse(saved);
+      p = data.p; e = data.e; wave = data.wave; currentShop = data.currentShop || [];
+      renderShop(); switchScreen('screen-shop');
+    } else {
+      startMatch();
+    }
+  }
+
+  function wipeSave() {
+    if(confirm("Abandon this run and start over?")) { localStorage.removeItem('ludusSaveV2'); location.reload(); }
+  }
+
+  function switchScreen(screenId) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active-screen'));
+    document.getElementById(screenId).classList.add('active-screen');
+    updateUI();
+  }
+
+  function updateUI() {
+    // Calculate derived stats for display
+    let totalDmgBonus = p.dmgMod + (p.str * 3);
+    let totalDef = p.defMod;
+    let dodgeChance = Math.min(60, Math.floor(p.spd * 3)); // 3% dodge per SPD point, capped at 60%
+
+    // Arena Update
+    document.getElementById('wave-display').innerText = `Wave ${wave}`;
+    document.getElementById('p-hp').innerText = `HP: ${p.hp}/${p.maxHp}`;
+    document.getElementById('p-sp').innerText = `STA: ${p.sp}/${p.maxSp}`;
+    document.getElementById('p-gold').innerText = `${p.gold}G`;
+    document.getElementById('p-gear').innerText = `${p.weapon} & ${p.armor}`;
+    
+    document.getElementById('p-str').innerText = `STR: ${p.str}`;
+    document.getElementById('p-spd').innerText = `SPD: ${p.spd}`;
+    document.getElementById('p-sta').innerText = `STA: ${p.sta}`;
+    
+    document.getElementById('p-dmg').innerText = `DMG: +${totalDmgBonus}`;
+    document.getElementById('p-def').innerText = `DEF: ${totalDef}`;
+    document.getElementById('p-dodge').innerText = `DODGE: ${dodgeChance}%`;
+
+    // Shop Update
+    document.getElementById('shop-hp').innerText = `HP: ${p.hp}/${p.maxHp}`;
+    document.getElementById('shop-gold').innerText = `${p.gold}G`;
+    
+    document.getElementById('shop-str').innerText = `STR: ${p.str}`;
+    document.getElementById('shop-spd').innerText = `SPD: ${p.spd}`;
+    document.getElementById('shop-sta').innerText = `STA: ${p.sta}`;
+    
+    document.getElementById('shop-dmg').innerText = `DMG: +${totalDmgBonus}`;
+    document.getElementById('shop-def').innerText = `DEF: ${totalDef}`;
+    document.getElementById('shop-dodge').innerText = `DODGE: ${dodgeChance}%`;
+
+    document.getElementById('e-hp').innerText = `HP: ${e.hp}/${e.maxHp}`;
+    document.getElementById('e-name').innerText = `${e.icon} ${e.name}`;
+  }
+
+  function logAction(msg, clear = false) {
+    const log = document.getElementById('log');
+    if (clear) log.innerHTML = "";
+    log.innerHTML = `<div class="log-turn">${msg}</div>` + log.innerHTML;
+  }
+
+  function startMatch() {
+    let typeIndex = Math.floor(Math.random() * (enemyTypes.length - 1)); 
+    if (wave % 5 === 0) typeIndex = 4; // Boss every 5 waves
+    let template = enemyTypes[typeIndex];
+    
+    e.name = template.name;
+    e.icon = template.icon;
+    e.dodge = template.dodge;
+    e.maxHp = Math.floor((80 + (wave * 25)) * template.hpMod);
+    e.hp = e.maxHp;
+    e.dmgBase = Math.floor((5 + (wave * 2)) * template.dmgMod);
+    
+    p.sp = p.maxSp; 
+    gameActive = true;
+    logAction(`Wave ${wave}: A ${e.name} enters the arena! <i>${template.desc}</i>`, true);
+    switchScreen('screen-arena');
+  }
+
+  function endMatch(won) {
+    gameActive = false;
+    setTimeout(() => {
+      switchScreen('screen-post');
+      if (won) {
+        let reward = 40 + (wave * 10) + Math.floor(Math.random() * 20); 
+        document.getElementById('match-result').innerText = "VICTORY!";
+        document.getElementById('match-result').style.color = "#e6b800";
+        document.getElementById('match-desc').innerText = `You slaughtered the ${e.name} and earned ${reward} gold.`;
+        p.gold += reward; wave++;
+        generateShopItems(); saveGame(); renderShop();
+        document.getElementById('btn-next-arena').style.display = "block";
+        document.getElementById('btn-go-shop').style.display = "block";
+      } else {
+        document.getElementById('match-result').innerText = "DEFEAT.";
+        document.getElementById('match-result').style.color = "#ff4d4d";
+        document.getElementById('match-desc').innerText = `You died on Wave ${wave}.`;
+        document.getElementById('btn-next-arena').innerText = "Restart Run";
+        document.getElementById('btn-next-arena').onclick = wipeSave;
+        document.getElementById('btn-go-shop').style.display = "none";
+        localStorage.removeItem('ludusSaveV2'); 
+      }
+      updateUI();
+    }, 1500);
+  }
+
+  function heal() {
+    if (p.hp >= p.maxHp) { alert("Already at full health."); return; }
+    if (p.gold >= 25) { p.gold -= 25; p.hp = p.maxHp; saveGame(); updateUI(); } 
+    else { alert("Not enough gold!"); }
+  }
+
+  function act(move) {
+    if (!gameActive) return;
+    let turnLog = "";
+    
+    let pDodge = Math.min(0.60, p.spd * 0.03); 
+    let hitBonus = p.spd * 0.02; 
+    let dmgBonus = p.str * 3; 
+    let spRegen = 40 + (p.sta * 5); 
+
+    if (move === 'light' || move === 'heavy') {
+      let cost = move === 'light' ? 10 : 30;
+      let hitChance = move === 'light' ? (0.85 + hitBonus) : (0.55 + hitBonus);
+      
+      if (p.sp < cost) { logAction("You are too exhausted! Rest."); return; }
+      p.sp -= cost;
+
+      if (Math.random() < e.dodge) {
+        turnLog += `The ${e.name} swiftly dodged your attack!<br>`;
+      } 
+      else if (Math.random() <= hitChance) {
+        let baseDmg = move === 'light' ? (8 + Math.floor(Math.random() * 6)) : (20 + Math.floor(Math.random() * 15));
+        let finalDmg = baseDmg + p.dmgMod + dmgBonus;
+        e.hp -= finalDmg;
+        turnLog += `You struck the ${e.name} for <b style="color:${move==='heavy'?'#ff4d4d':'#fff'}">${finalDmg}</b> damage!<br>`;
+      } else {
+        turnLog += "You swung and missed.<br>";
+      }
+    } else if (move === 'rest') {
+      p.sp = Math.min(p.maxSp, p.sp + spRegen);
+      turnLog += `You evade and recover stamina (+${spRegen}).<br>`;
+      pDodge += 0.20; 
+    }
+
+    if (e.hp <= 0) { e.hp = 0; turnLog += "<br><span style='color:#e6b800'><b>The opponent falls!</b></span>"; endMatch(true); } 
+    else if (move !== 'rest' || Math.random() > 0.5) { 
+      if (Math.random() < pDodge) {
+        turnLog += `<span style="color:#4da6ff">You dodged the ${e.name}'s attack!</span>`;
+      } else {
+        let rawDmg = e.dmgBase + Math.floor(Math.random() * (wave * 2));
+        let finalDmg = Math.max(1, rawDmg - p.defMod);
+        p.hp -= finalDmg;
+        turnLog += `The ${e.name} hits you for <b>${finalDmg}</b> damage.`;
+      }
+    }
+
+    if (p.hp <= 0) { p.hp = 0; turnLog += "<br><span style='color:#ff4d4d'><b>You fall to the sands.</b></span>"; endMatch(false); }
+
+    logAction(turnLog); updateUI();
+  }
+</script>
+</body>
+</html>
